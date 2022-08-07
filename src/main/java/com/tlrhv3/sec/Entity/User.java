@@ -8,10 +8,7 @@ import lombok.NonNull;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
-import javax.persistence.Entity;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
+import javax.persistence.*;
 import java.util.Collection;
 import java.util.Collections;
 
@@ -27,6 +24,9 @@ public class User implements UserDetails {
         @NonNull
         @JsonIgnore
         private String password;
+
+     @OneToOne(fetch = FetchType.LAZY,mappedBy = "user")
+     private RefreshToken refreshToken;
 
         //another problem with register
      public User(String username, String email, String encode) {

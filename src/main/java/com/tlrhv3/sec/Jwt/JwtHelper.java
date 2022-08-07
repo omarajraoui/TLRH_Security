@@ -17,18 +17,18 @@ import java.util.Optional;
 public class JwtHelper {
 
     static final String issuer = "MyApp";
-    @Value("#{5*60 *1000}")
-    private int accessTokenExpiration;
 
-    @Value("#{60 *24 *60 *1000*30}")
-    private int refreshTokenExpiration;
+    private long accessTokenExpirationMs;
+
+    private long refreshTokenExpirationMs;
     private Algorithm accessTokenAlgorithm;
     private Algorithm refreshTokenAlgorithm;
     private JWTVerifier accessTokenVerifier;
     private JWTVerifier refreshTokenVerifier;
 
-    public JwtHelper(@Value("${accessTokenSecret}") String accessTokenSecret, @Value("${refreshTokenSecret}") String refreshTokenSecret) {
-
+    public JwtHelper(@Value("${accessTokenSecret}") String accessTokenSecret, @Value("${refreshTokenSecret}") String refreshTokenSecret, @Value("${refreshTokenExpirationDays}") int refreshTokenExpirationDays, @Value("${accessTokenExpirationMinutes}") int accessTokenExpirationMinutes) {
+        accessTokenExpirationMs = (long) accessTokenExpirationMinutes * 60 * 1000;
+        refreshTokenExpirationMs = (long) refreshTokenExpirationDays*60 *24 *60 *1000;
         accessTokenAlgorithm = Algorithm.HMAC512(accessTokenSecret);
         refreshTokenAlgorithm = Algorithm.HMAC512(refreshTokenSecret);
         accessTokenVerifier = JWT.require(accessTokenAlgorithm)
@@ -45,7 +45,7 @@ public class JwtHelper {
                         .withIssuer(issuer)
                         .withSubject(user.getUsername())
                         .withIssuedAt(new Date())
-                        .withExpiresAt(new Date(new Date().getDate() + accessTokenExpiration))
+                        .withExpiresAt(new Date(new Date().getDate() + accessTokenExpirationMs))
                         .sign(accessTokenAlgorithm);
 
 
@@ -58,7 +58,7 @@ public class JwtHelper {
                         .withSubject(user.getUsername())
                         .withClaim("tokenId", tokenId)
                         .withIssuedAt(new Date())
-                        .withExpiresAt(new Date(new Date().getDate() + refreshTokenExpiration))
+                        .withExpiresAt(new Date(new Date().getDate() + refreshTokenExpirationMs))
                         .sign(refreshTokenAlgorithm);
 
 
@@ -95,8 +95,9 @@ public class JwtHelper {
     public String getUserIdFromRefreshToken(String token){
         return decodeAccessToken(token).get().getSubject();
     }
-    public String getTokenIdFromRefreshToken(String token){
-        return decodeRefreshToken(token).get().getClaim("tokenId").asString();
+    public Long getTokenIdFromRefreshToken(String token){
+        //error here in string to long
+        return decodeRefreshToken(token).get().getClaim("tokenId").asLong();
 
     }
 

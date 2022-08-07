@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -45,26 +46,25 @@ public class AuthController {
     UserRepository userRepository;
 
 
-
     @PostMapping("/login")
     @Transactional //any db op is reverted if an exception is thrown
-    public ResponseEntity<?> login(@Valid @RequestBody LoginDto loginDto){
-        Authentication authentication =authenticationManager
-                .authenticate(new UsernamePasswordAuthenticationToken(loginDto.getUsername(),loginDto.getPassword()));
+    public ResponseEntity<?> login(@Valid @RequestBody LoginDto loginDto) {
+        Authentication authentication = authenticationManager
+                .authenticate(new UsernamePasswordAuthenticationToken(loginDto.getUsername(), loginDto.getPassword()));
         SecurityContextHolder.getContext().setAuthentication(authentication);
         User user = (User) authentication.getPrincipal();
         RefreshToken refreshToken = new RefreshToken();
         refreshToken.setUser(user);
         refreshTokenRepository.save(refreshToken);
-        String accessToken =jwtHelper.generateAccessToken(user);
-        String refreshTokenSring =jwtHelper.generateRefreshToken(user,refreshToken.getId());
-        return ResponseEntity.ok(new TokenDto(user.getId(),accessToken,refreshTokenSring));
+        String accessToken = jwtHelper.generateAccessToken(user);
+        String refreshTokenSring = jwtHelper.generateRefreshToken(user, refreshToken.getId());
+        return ResponseEntity.ok(new TokenDto(user.getId(), accessToken, refreshTokenSring));
     }
 
     @PostMapping("/register")
     @Transactional
-    public ResponseEntity<?> register(@Valid @RequestBody RegisterDto registerDto){
-        User user =new User();
+    public ResponseEntity<?> register(@Valid @RequestBody RegisterDto registerDto) {
+        User user = new User();
         user.setUsername(registerDto.getUsername());
         user.setEmail(registerDto.getEmail());
         user.setPassword(passwordEncoder.encode(registerDto.getPassword()));
@@ -72,23 +72,34 @@ public class AuthController {
         RefreshToken refreshToken = new RefreshToken();
         refreshToken.setUser(user);
         refreshTokenRepository.save(refreshToken);
-        String accessToken =jwtHelper.generateAccessToken(user);
-        String refreshTokenSring =jwtHelper.generateRefreshToken(user,refreshToken.getId());
-        return ResponseEntity.ok(new TokenDto(user.getId(),accessToken,refreshTokenSring));
+        String accessToken = jwtHelper.generateAccessToken(user);
+        String refreshTokenSring = jwtHelper.generateRefreshToken(user, refreshToken.getId());
+        return ResponseEntity.ok(new TokenDto(user.getId(), accessToken, refreshTokenSring));
     }
+
     @PostMapping("logout")
-    public ResponseEntity<?> logout(@RequestBody TokenDto tokenDto){
-        //tokenDto to invalidate the refreshtoken
+    public ResponseEntity<?> logout(@RequestBody TokenDto tokenDto) {
+//        tokenDto to invalidate the refreshtoken
         String refreshTokenString = tokenDto.getRefreshToken();
-//        if (jwtHelper.validateRefreshToken(refreshTokenString) && refreshTokenRepository.existsById( jwtHelper.getTokenIdFromRefreshToken(refreshTokenString))){
-//            //valid and exists in db
-//            refreshTokenRepository.deleteById(  );
-//
-//        }
-//        return ResponseEntity.ok(tokenDto.getRefreshToken());
+        if (jwtHelper.validateRefreshToken(refreshTokenString) && refreshTokenRepository.existsById(jwtHelper.getTokenIdFromRefreshToken(refreshTokenString))) {
+            //valid and exists in db
+            refreshTokenRepository.deleteById(jwtHelper.getTokenIdFromRefreshToken(refreshTokenString));
+            return ResponseEntity.ok().build();
+        }
+        throw new BadCredentialsException("invalid token");
+
 
     }
-
-
-
 }
+
+
+
+
+
+
+
+
+
+
+
+
